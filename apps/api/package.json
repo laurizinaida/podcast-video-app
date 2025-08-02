@@ -1,0 +1,32 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev src/index.ts --local --persist-to=./.wrangler/state",
+    "build": "wrangler deploy --dry-run",
+    "start": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "type-check": "tsc --noEmit",
+    "test:type-check": "npm run type-check && npm run test:run"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.2.2",
+    "@podcast-video-app/shared": "workspace:*",
+    "bcryptjs": "^2.4.3",
+    "hono": "^4.5.1",
+    "nanoid": "^5.0.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240712.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.14.10",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0",
+    "wrangler": "^3.67.0"
+  }
+}
