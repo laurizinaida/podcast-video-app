@@ -1,24 +1,32 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-export function middleware(_request: NextRequest) {
-  // 根据架构文档：前端不应直接读取认证token
-  // 让页面组件自己通过API调用来验证认证状态并处理重定向
-  // middleware不再进行认证检查
+const secret = process.env.AUTH_SECRET;
 
-  return NextResponse.next()
+export async function middleware(req: NextRequest) {
+  const token = await getToken({ req, secret });
+  const { pathname } = req.nextUrl;
+
+  const isAuthenticated = !!token;
+
+  // If the user is authenticated and tries to access login/register, redirect to dashboard
+  if (isAuthenticated && (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/register'))) {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // If the user is not authenticated and tries to access a protected route, redirect to login
+  if (!isAuthenticated && pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/auth/login', req.url));
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+    '/dashboard/:path*',
+    '/auth/login',
+    '/auth/register',
   ],
-}
+};

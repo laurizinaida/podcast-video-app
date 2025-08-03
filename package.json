@@ -6,14 +6,19 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:wrangler": "kill-port 8788 3000 && npx wrangler pages dev --port 8788 --proxy 3000 --d1=DB -- pnpm --filter web dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
+    "kill-port": "^2.0.1",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0"
   },
-  "packageManager": "pnpm@10.11.1"
+  "packageManager": "pnpm@10.11.1",
+  "dependencies": {
+    "@auth/d1-adapter": "^1.10.0"
+  }
 }

@@ -13,8 +13,7 @@
 ```mermaid
 graph TD
     subgraph "Monorepo 代码结构 (apps/)"
-        A["<b style='font-size:14px'>web</b><br/>(前端React组件)"]
-        B["<b style='font-size:14px'>api</b><br/>(后端API路由, 包括认证和业务逻辑)"]
+        A["<b style='font-size:14px'>web</b><br/>(统一的全栈应用)<br/>- 前端React组件<br/>- 后端API路由"]
     end
 
     subgraph "Cloudflare 部署产物"
@@ -26,14 +25,11 @@ graph TD
         C["构建流程<br/>(next build)"]
     end
 
-    A -- "编译成" --> D
-    B -- "编译成" --> E
+    A -- "输入" --> C
+    C -- "编译成前端产物" --> D
+    C -- "编译成后端产物" --> E
 
-    A & B --> C
-    C --> D & E
-
-    style A fill:#D6EAF8
-    style B fill:#D1F2EB
+    style A fill:#D1F2EB
     style D fill:#D6EAF8,stroke:#3498DB,stroke-width:2px
     style E fill:#D1F2EB,stroke:#1ABC9C,stroke-width:2px
 ```
@@ -42,7 +38,7 @@ graph TD
 
 * **架构风格:** 解耦的服务化架构。
 * **代码仓库:** 单一代码仓库 (Monorepo)。
-* **核心流程:** 用户通过部署在Cloudflare Pages上的前端应用进行所有交互和设计。 当用户提交"生成视频"任务时，请求被Cloudflare Worker接收，并将一个任务描述（包含设计方案和资源链接）传递给独立的本地渲染程序。 渲染程��完成后，将成品视频上传回Cloudflare R2存储，并通知用户。
+* **核心流程:** 用户通过部署在Cloudflare Pages上的前端应用进行所有交互和设计。 当用户提交"生成视频"任务时，请求被Cloudflare Worker接收，并将一个任务描述（包含设计方案和资源链接）传递给独立的本地渲染程序。 渲染程序完成后，将成品视频上传回Cloudflare R2存储，并通知用户。
 
 ### **关于本地渲染器的说明 (Note on the Local Renderer)**
 
@@ -58,23 +54,22 @@ graph TD
     subgraph "用户端"
         A["用户浏览器"]
     end
-
     subgraph "Cloudflare 云平台"
-        B["前端应用 @ Pages"]
-        C["API逻辑 @ Workers"]
+        subgraph "Next.js 全栈应用 @ Pages & Workers"
+            B1["前端 (Pages)"]
+            B2["后端API (Workers)"]
+        end
         D["数据库 @ D1"]
         E["对象存储 @ R2"]
     end
-
     subgraph "本地环境 (MVP阶段)"
         F["独立渲染程序 @ 个人电脑"]
     end
-
-    A --> B
-    B --> C
-    C --> D
-    C --> E
-    C -->|"1. 提交渲染任务"| F
+    A -->|"访问/交互"| B1
+    B1 -->|"内部调用"| B2
+    B2 -->|"读/写"| D
+    B2 -->|"管理"| E
+    B2 -->|"1. 提交渲染任务"| F
     F -->|"2. 完成后上传视频"| E
 ```
 
@@ -83,3 +78,5 @@ graph TD
 * **无服务器架构 (Serverless Architecture):** 充分利用Cloudflare Pages和Workers，避免管理服务器，按需付费，完美契合我们低成本启动的约束。
 * **渲染器解耦 (Decoupled Renderer):** 将UI与渲染分离，确保了用户界面的高性能和响应速度，即使在渲染任务繁重时也不会受影响。
 * **单一代码仓库 (Monorepo):** 简化了前端、后端Worker以及未来可能共享的代码库之间的类型定义和依赖管理。
+
+***

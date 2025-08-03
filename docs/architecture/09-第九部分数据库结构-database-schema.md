@@ -43,3 +43,5 @@ CREATE TABLE Projects (
 CREATE INDEX idx_assets_user_id ON Assets(user_id);
 CREATE INDEX idx_projects_user_id ON Projects(user_id);
 ```
+
+***

@@ -1,117 +1,44 @@
-import { signIn, signOut } from "next-auth/react";
-import { auth } from "@/lib/auth";
+import { apiClient } from './apiClient';
+import { User } from '@/packages/shared/types/user';
+import { signIn, signOut, getSession } from 'next-auth/react';
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
+export type RegisterCredentials = Omit<User, 'id' | 'createdAt'>;
+export type LoginCredentials = Pick<User, 'email' | 'password'>;
 
-export interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  created_at?: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  message?: string;
-}
-
-export interface Session {
-  user: User;
+export async function register(credentials: RegisterCredentials): Promise<User> {
+  const response = await apiClient.post('/auth/register', credentials);
+  if (response.status !== 201) {
+    throw new Error(response.data.error || 'Registration failed');
+  }
+  // After successful registration, automatically sign in the user
+  await login({ email: credentials.email, password: credentials.password });
+  return response.data.user;
 }
 
 export async function login(credentials: LoginCredentials): Promise<User> {
-  try {
-    const result = await signIn('credentials', {
-      email: credentials.email,
-      password: credentials.password,
-      redirect: false,
-    });
+  const result = await signIn('credentials', {
+    redirect: false,
+    email: credentials.email,
+    password: credentials.password,
+  });
 
-    if (result?.error) {
-      throw new Error(result.error);
-    }
-
-    // 获取当前会话以返回用户信息
-    const session = await getCurrentUser();
-    if (!session?.user) {
-      throw new Error('Failed to get user session after login');
-    }
-
-    return session.user;
-  } catch (error) {
-    console.error('Login error:', error);
-    throw error;
+  if (result?.error) {
+    throw new Error(result.error);
   }
-}
 
-export async function register(userData: RegisterData): Promise<User> {
-  try {
-    // 先调用注册 API
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Registration failed');
-    }
-
-    const data: AuthResponse = await response.json();
-    
-    // 注册成功后自动登录
-    await login({
-      email: userData.email,
-      password: userData.password,
-    });
-
-    return data.user;
-  } catch (error) {
-    console.error('Registration error:', error);
-    throw error;
+  // Fetch the session to get user data
+  const session = await getSession();
+  if (!session?.user) {
+    throw new Error('Login successful, but failed to retrieve session.');
   }
+  return session.user as User;
 }
 
 export async function logout(): Promise<void> {
-  try {
-    await signOut({ redirect: false });
-  } catch (error) {
-    console.error('Logout error:', error);
-    throw error;
-  }
+  await signOut({ redirect: false });
 }
 
-export async function getCurrentUser(): Promise<Session | null> {
-  try {
-    // 在客户端组件中，我们需要使用 useSession hook
-    // 这个函数主要用于服务端或初始化时获取会话
-    const session = await auth();
-    
-    if (session?.user) {
-      return {
-        user: {
-          id: session.user.id as string,
-          email: session.user.email as string,
-          name: session.user.name as string,
-        }
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Get current user error:', error);
-    return null;
-  }
+export async function getMe(): Promise<User | null> {
+  const session = await getSession();
+  return session?.user as User | null;
 }

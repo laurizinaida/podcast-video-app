@@ -9,11 +9,13 @@
     "start": "next start",
     "type-check": "tsc --noEmit",
     "test": "jest",
+    "test:api": "jest --config jest.config.api.js",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
+    "@hookform/resolvers": "^5.2.1",
     "@podcast-video-app/shared": "workspace:*",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
@@ -24,14 +26,17 @@
     "next-auth": "5.0.0-beta.22",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hook-form": "^7.62.0",
     "tailwind-merge": "^2.5.3",
     "tailwindcss-animate": "^1.0.7",
+    "bcryptjs": "^2.4.3",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.4",
     "@testing-library/react": "^14.3.1",
     "@testing-library/user-event": "^14.6.1",
+    "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.0",

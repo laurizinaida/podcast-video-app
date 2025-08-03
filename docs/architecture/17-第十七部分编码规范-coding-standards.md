@@ -1,4 +1,4 @@
-## **第十八部分：编码规范 (Coding Standards)**
+## **第十七部分：编码规范 (Coding Standards)**
 
 ### **关键规则 (Critical Rules)**
 
@@ -7,10 +7,4 @@
 * **3. 环境变量隔离:** 应用代码中**严禁**直接访问`process.env`。所有密钥和配置**必须**通过Cloudflare Worker运行时注入的`env`对象来访问。
 * **4. 统一错误处理:** 所有API路由**必须**使用统一的错误处理中间件，并使用`AppError`类来抛出可预期的业务逻辑错误。
 
-### **命名约定 (Naming Conventions)**
-
-| 元素     | 约定                | 示例              |
-|:------ |:----------------- |:--------------- |
-| 组件/类型  | PascalCase        | `UserProfile`   |
-| Hook文件 | camelCase (use\*) | `useAuth.ts`    |
-| 数据库表   | snake\_case       | `user_profiles` |
+***

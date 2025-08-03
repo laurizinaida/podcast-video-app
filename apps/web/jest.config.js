@@ -18,10 +18,7 @@ const customJestConfig = {
     '!src/app/layout.tsx',
     '!src/app/globals.css',
   ],
-  testPathIgnorePatterns: [
-    '<rootDir>/.next/',
-    '<rootDir>/node_modules/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', '/api/'],
   transformIgnorePatterns: [
     'node_modules/(?!(next-auth)/)',
     '^.+\\.module\\.(css|sass|scss)$',

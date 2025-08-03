@@ -1,21 +1,25 @@
-# **全栈架构文档 (Fullstack Architecture Document) - v2.5 (最终施工手册)**
+# **全栈架构文档 (Fullstack Architecture Document) - v2.9 (最终施工手册)**
 
 ## **第一部分：简介 (Introduction)**
 
 本文档概述了"智能化在线视频创作平台"的完整全栈架构，包括后端系统、前端实现以及它们之间的集成。它将作为AI驱动开发工作的唯一技术真实来源，确保整个技术栈的一致性。这份文档不仅定义了“什么”，更定义了“如何做”，为核心功能提供了明确的、可复用的实现模式。
 
-* **启动模板:** 决定使用社区推荐的"Cloudflare Pages + Workers入门模板"以加速开发。
+* **项目脚手架 (Project Scaffolding):** 本项目将基于 **Turborepo** 的 **Next.js App Router** 模板进行初始化，并配置为可一键部署到 **Cloudflare Pages** 的全栈应用。这种结构为我们的Monorepo提供了最佳的开发体验和构建性能。
 
 ### **变更日志 (Change Log)**
 
-| 日期         | 版本  | 描述                                                          | 作者           |
-|:---------- |:--- |:----------------------------------------------------------- |:------------ |
-| 2025年8月1日  | 2.5 | **最终定稿版**：增加本地渲染器设计初衷说明、补全R2上传确认流程、并明确密码哈希执行地点。             | Winston, 架构师 |
-| 2025年8月1日  | 2.3 | **最终版**：增加架构模式澄清图，提供访问D1/R2的关键代码模式，明确演进路径，并补充异步任务处理和安全下载模式。 | Winston, 架构师 |
-| 2025年8月1日  | 2.2 | 修正了数据库访问的认证描述，明确了公共端点的例外情况。                                 | Winston, 架构师 |
-| 2025年8月1日  | 2.1 | 增加架构模式澄清图，提供访问D1/R2的关键代码模式，明确演进路径。                          | Winston, 架构师 |
-| 2025年8月1日  | 2.0 | **重大升级**：深化核心工作流，增加模式驱动的实现指南，为认证流程提供详细代码模式。                 | Winston, 架构师 |
-| 2025年7月30日 | 1.0 | 创建初始架构文档草稿                                                  | Winston, 架构师 |
+| 日期         | 版本  | 描述                                                      | 作者           |
+|:---------- |:--- |:------------------------------------------------------- |:------------ |
+| 2025年8月2日  | 2.9 | **最终结构优化**：重构第十一、十二部分为统一的“实现架构与核心模式”，提升文档清晰度。           | Winston, 架构师 |
+| 2025年8月1日  | 2.8 | 明确了R2的两种访问模式（原生绑定与S3 API），并修正了示例代码以消除矛盾。                | Winston, 架构师 |
+| 2025年8月1日  | 2.7 | 废弃`apps/api`目录，将后端逻辑并入`apps/web`，从物理结构上统一前后端。           | Winston, 架构师 |
+| 2025年8月1日  | 2.6 | 修正了`第十二部分`关于Hono的遗留描述，明确了路由完全由Next.js处理。                | Winston, 架构师 |
+| 2025年8月1日  | 2.5 | 最终定稿版：增加本地渲染器设计初衷说明、补全R2上传确认流程、并明确密码哈希执行地点。             | Winston, 架构师 |
+| 2025年8月1日  | 2.3 | 最终版：增加架构模式澄清图，提供访问D1/R2的关键代码模式，明确演进路径，并补充异步任务处理和安全下载模式。 | Winston, 架构师 |
+| 2025年8月1日  | 2.2 | 修正了数据库访问的认证描述，明确了公共端点的例外情况。                             | Winston, 架构师 |
+| 2025年8月1日  | 2.1 | 增加架构模式澄清图，提供访问D1/R2的关键代码模式，明确演进路径。                      | Winston, 架构师 |
+| 2025年8月1日  | 2.0 | **重大升级**：深化核心工作流，增加模式驱动的实现指南，为认证流程提供详细代码模式。             | Winston, 架构师 |
+| 2025年7月30日 | 1.0 | 创建初始架构文档草稿                                              | Winston, 架构师 |
 
 -----
 
@@ -34,8 +38,7 @@
 ```mermaid
 graph TD
     subgraph "Monorepo 代码结构 (apps/)"
-        A["<b style='font-size:14px'>web</b><br/>(前端React组件)"]
-        B["<b style='font-size:14px'>api</b><br/>(后端API路由, 包括认证和业务逻辑)"]
+        A["<b style='font-size:14px'>web</b><br/>(统一的全栈应用)<br/>- 前端React组件<br/>- 后端API路由"]
     end
 
     subgraph "Cloudflare 部署产物"
@@ -47,14 +50,11 @@ graph TD
         C["构建流程<br/>(next build)"]
     end
 
-    A -- "编译成" --> D
-    B -- "编译成" --> E
+    A -- "输入" --> C
+    C -- "编译成前端产物" --> D
+    C -- "编译成后端产物" --> E
 
-    A & B --> C
-    C --> D & E
-
-    style A fill:#D6EAF8
-    style B fill:#D1F2EB
+    style A fill:#D1F2EB
     style D fill:#D6EAF8,stroke:#3498DB,stroke-width:2px
     style E fill:#D1F2EB,stroke:#1ABC9C,stroke-width:2px
 ```
@@ -79,23 +79,22 @@ graph TD
     subgraph "用户端"
         A["用户浏览器"]
     end
-
     subgraph "Cloudflare 云平台"
-        B["前端应用 @ Pages"]
-        C["API逻辑 @ Workers"]
+        subgraph "Next.js 全栈应用 @ Pages & Workers"
+            B1["前端 (Pages)"]
+            B2["后端API (Workers)"]
+        end
         D["数据库 @ D1"]
         E["对象存储 @ R2"]
     end
-
     subgraph "本地环境 (MVP阶段)"
         F["独立渲染程序 @ 个人电脑"]
     end
-
-    A --> B
-    B --> C
-    C --> D
-    C --> E
-    C -->|"1. 提交渲染任务"| F
+    A -->|"访问/交互"| B1
+    B1 -->|"内部调用"| B2
+    B2 -->|"读/写"| D
+    B2 -->|"管理"| E
+    B2 -->|"1. 提交渲染任务"| F
     F -->|"2. 完成后上传视频"| E
 ```
 
@@ -152,7 +151,6 @@ graph TD
     id: string;
     email: string;
     name?: string;
-    passwordHash?: string;
     image?: string; // For Google profile picture
     createdAt: Date;
   }
@@ -589,29 +587,37 @@ components:
 
 ## **第六部分：组件 (Components)**
 
-* **1. 前端应用 (Frontend Application):** 提供完整的用户界面，使用Next.js构建，部署在Cloudflare Pages。
-* **2. 后端服务 (Backend Service):** 处理所有业务逻辑，使用Cloudflare Workers构建。
-* **3. 渲染服务 (Rendering Service):** 接收渲染任务并使用FFmpeg生成视频，使用Python构建，MVP阶段在本地运行。
-* **4. 数据库 (Database):** 持久化存储结构化数据，使用Cloudflare D1。
-* **5. 对象存储 (Storage):** 存储所有媒体文件，使用Cloudflare R2。
+* **1. Next.js 全栈应用 (Next.js Full-Stack Application):** 这是系统的核心组件，作为一个统一的实体进行开发和部署。
+  * **前端部分 (UI):** 提供完整的用户界面，使用Next.js的React组件构建，最终由Cloudflare Pages分发。
+  * **后端部分 (API):** 处理所有业务逻辑，使用Next.js的API路由编写，最终在Cloudflare Workers上运行。
+* **2. 渲染服务 (Rendering Service):** 接收渲染任务并使用FFmpeg生成视频，使用Python构建，MVP阶段在本地运行。
+* **3. 数据库 (Database):** 持久化存储结构化数据，使用Cloudflare D1。
+* **4. 对象存储 (Storage):** 存储所有媒体文件，使用Cloudflare R2。
 
 ### **组件交互图 (Component Diagram)**
 
 ```mermaid
 graph TD
-    A[用户] -->|"通过浏览器交互"| C1[Frontend Application]
+    A[用户] -->|"通过浏览器交互"| C1_FE
+    
+    subgraph "Next.js 全栈应用"
+        C1_FE["Frontend (UI)"]
+        C1_BE["Backend (API)"]
+    end
 
     subgraph "Cloudflare 云平台"
-        C1 -->|"调用REST API"| C2[Backend Service Worker]
-        C2 -->|"读/写"| C4[Database D1]
-        C2 -->|"管理元数据/获取上传URL"| C5[Storage R2]
+        C4[Database D1]
+        C5[Storage R2]
     end
 
     subgraph "本地环境"
         C3[Rendering Service Python/FFmpeg]
     end
 
-    C2 -->|"发送渲染任务 (通过API)"| C3
+    C1_FE -->|"内部调用"| C1_BE
+    C1_BE -->|"读/写"| C4
+    C1_BE -->|"管理"| C5
+    C1_BE -->|"发送渲染任务"| C3
     C3 -->|"上传成品视频"| C5
 ```
 
@@ -778,7 +784,9 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
 
 -----
 
-## **第十部分：数据与存储访问模式 (Data and Storage Access Patterns)**
+## **第十部分：数据与存储的双重访问模式 (Dual Access Patterns for Data & Storage)**
+
+**核心原则:** 与Cloudflare中间件（D1, R2）的交互必须遵循场景驱动的原则，选择最高效、最安全的访问模式。
 
 **原则：默认安全，显式公开 (Principle: Secure by Default, Explicitly Public)**
 
@@ -794,45 +802,30 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
 
 ### **10.1 D1数据库访问模式 (D1 Database Access Pattern)**
 
-所有数据库操作必须在经过身份验证的API路由中进行，并通过Cloudflare运行时提供的`env`对象绑定来执行。
+**场景:** 所有在**服务器端**对数据库的直接读写操作。
+**机制:** **必须**使用Cloudflare原生注入的**数据库绑定** (`env.DB`)。
 
-* **场景：** 获取当前登录用户的所有项目。
-
-* **文件位置：** `apps/api/projects/route.ts` (示例)
-
-* **关键代码：**
+* **关键代码 (获取用户项目):**
   
   ```typescript
   import { getServerSession } from "next-auth/next";
   import { authOptions } from "../auth/[...nextauth]";
   import { NextRequest, NextResponse } from "next/server";
   
-  // 定义Cloudflare运行时注入的环境变量类型
-  interface Env {
-    DB: D1Database;
-  }
+  interface Env { DB: D1Database; }
   
-  // 使用Next.js App Router的GET处理器
   export async function GET(req: NextRequest) {
-    // 1. 从请求中安全地获取用户会话
-    // Auth.js通过HttpOnly Cookie自动处理了认证
     const session = await getServerSession(authOptions);
-  
     if (!session || !session.user?.id) {
       return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: '请先登录。' } }, { status: 401 });
     }
   
-    // 2. 从上下文获取D1数据库绑定
     const env = (req as any).ctx.env as Env;
   
     try {
-      // 3. 必须使用预处理语句 (Prepared Statements) 来防止SQL注入
       const stmt = env.DB.prepare("SELECT * FROM Projects WHERE userId = ?1").bind(session.user.id);
       const { results } = await stmt.all();
-  
-      // 4. 返回查询结果
       return NextResponse.json({ projects: results });
-  
     } catch (e) {
       console.error("D1 Query Failed:", e);
       return NextResponse.json({ error: { code: 'DATABASE_ERROR', message: '获取项目失败。' } }, { status: 500 });
@@ -840,25 +833,48 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
   }
   ```
 
-### **10.2 R2存储上传模式 (R2 Storage Upload Pattern)**
+### **10.2 R2存储：服务器端直接访问模式 (R2: Server-Side Direct Access Pattern)**
 
-文件上传**必须**采用“预签名URL”(Presigned URL) 模式，以确保安全和性能。后端仅负责授权，实际上传由客户端直接完成。
+**场景:** 当Worker需要**在服务器端自己**直接读取、写入或删除R2对象时。
+**机制:** **必须**使用Cloudflare原生注入的**存储桶绑定** (`env.ASSETS`)。
 
-* **场景：** 为用户上传音频文件生成一个安全的上传链接。
+* **关键代码 (服务器端读取对象):**
+  
+  ```typescript
+  // 假设这是一个需要读取R2中某个配置文件的API
+  export async function GET(req: NextRequest) {
+    // ... 身份验证 ...
+    const env = (req as any).ctx.env as Env & { ASSETS: R2Bucket };
+  
+    try {
+      const object = await env.ASSETS.get("path/to/your-object.json");
+  
+      if (object === null) {
+        return NextResponse.json({ error: { code: 'NOT_FOUND', message: '对象不存在。' } }, { status: 404 });
+      }
+  
+      const data = await object.json();
+      return NextResponse.json(data);
+  
+    } catch (e) {
+      console.error("R2 Get Failed:", e);
+      return NextResponse.json({ error: { code: 'STORAGE_ERROR', message: '读取文件失败。' } }, { status: 500 });
+    }
+  }
+  ```
 
-* **文件位置：** `apps/api/assets/upload-url/route.ts` (示例)
+### **10.3 R2存储：客户端授权访问模式 (R2: Client-Side Authorized Access - Presigned URLs)**
 
-* **关键代码：**
+**场景:** 当需要**授权用户的浏览器**直接、安全地上传或下载文件时。
+**机制:** **必须**由Worker使用**S3兼容API (`@aws-sdk/client-s3`)** 生成有时效性的**预签名URL**，并将该URL返回给客户端。
+
+* **关键代码 (生成上传URL):**
   
   ```typescript
   import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
   import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-  import { getServerSession } from "next-auth/next";
-  import { authOptions } from "../../auth/[...nextauth]";
-  import { NextRequest, NextResponse } from "next/server";
-  import crypto from "crypto";
+  // ... 其他引入与认证逻辑 ...
   
-  // 定义Cloudflare运行时注入的环境变量类型
   interface Env {
     R2_BUCKET_NAME: string;
     R2_ACCOUNT_ID: string;
@@ -867,15 +883,10 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
   }
   
   export async function POST(req: NextRequest) {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.id) {
-      return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: '请先登录。' } }, { status: 401 });
-    }
-  
+    // ... 身份验证 ...
     const { fileName, fileType } = await req.json();
     const env = (req as any).ctx.env as Env;
   
-    // 1. 初始化S3客户端以与R2交互
     const s3 = new S3Client({
       region: "auto",
       endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -885,88 +896,66 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
       },
     });
   
-    // 2. 生成一个唯一的、安全的文件名
     const uniqueKey = `${session.user.id}/${crypto.randomUUID()}-${fileName}`;
-  
-    // 3. 创建预签名URL命令
-    const command = new PutObjectCommand({
-      Bucket: env.R2_BUCKET_NAME,
-      Key: uniqueKey,
-      ContentType: fileType,
-    });
-  
-    // 4. 生成URL，有效期为10分钟
+    const command = new PutObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: uniqueKey, ContentType: fileType });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 600 });
   
     return NextResponse.json({ uploadUrl, key: uniqueKey });
   }
   ```
 
-### **10.3 R2上传确认模式 (R2 Upload Confirmation Pattern)**
-
-**原则:** 在客户端使用预签名URL将文件上传到R2**之后**，**必须**调用一个专用的后端API来确认上传成功，并由后端在数据库中创建相应的`Asset`记录。
-
-* **场景:** 前端成功将文件上传到R2后。
-* **API端点:** `POST /api/assets/confirm-upload`
-* **请求体:** `{ "key": string, "fileName": string, "fileType": string, "fileSize": number }`
-* **后端逻辑:**
-  1. 验证用户身份。
-  2. 验证请求体中的数据。
-  3. 在`Assets`表中插入一条新记录，其中`storage_url`字段的值即为`key`。
-  4. 返回新创建的`Asset`对象。
-
-### **10.4 R2安全下载模式 (R2 Secure Download Pattern)**
-
-**原则:** R2存储桶中的所有用户生成内容**必须**保持私有。前端向用户提供文件访问的唯一方式是通过后端生成的、有时效性的“预签名下载URL”。
-
-* **场景:** 用户在项目页面点击“下载视频”按钮。
-
-* **关键代码 (`apps/api/assets/download-url/route.ts`):**
+* **关键代码 (生成下载URL):**
   
   ```typescript
   import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
   import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-  // ...其他引入与认证逻辑...
+  // ... 其他引入与认证逻辑 ...
   
   export async function POST(req: NextRequest) {
-    // ... 必须先进行用户身份和项目所有权验证 ...
-    const { assetKey } = await req.json(); // assetKey是文件在R2中的路径
+    // ... 身份验证和资产所有权验证 ...
+    const { assetKey } = await req.json();
     const env = (req as any).ctx.env as Env;
   
     const s3 = new S3Client({ /* ...S3客户端配置... */ });
-  
-    const command = new GetObjectCommand({
-      Bucket: env.R2_BUCKET_NAME,
-      Key: assetKey,
-    });
-  
-    // 生成一个有效期为5分钟的只读下载链接
+    const command = new GetObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: assetKey });
     const downloadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
   
     return NextResponse.json({ downloadUrl });
   }
   ```
 
+### **10.4 R2上传确认模式 (R2 Upload Confirmation Pattern)**
+
+*此部分与客户端授权访问模式协同工作。*
+
+**原则:** 在客户端使用预签名URL将文件上传到R2**之后**，**必须**调用一个专用的后端API来确认上传成功，并由后端在数据库中创建相应的`Asset`记录。
+
+* **API端点:** `POST /api/assets/confirm-upload`
+* **请求体:** `{ "key": string, "fileName": string, "fileType": string, "fileSize": number }`
+* **后端逻辑:**
+  1. 验证用户身份。
+  2. 在`Assets`表中插入一条新记录。
+
 -----
 
-## **第十一部分：前端架构 (Frontend Architecture)**
+## **第十一部分：实现架构与核心模式 (Implementation Architecture & Core Patterns)**
 
-### **11.1 核心实现模式 (Core Implementation Patterns)**
+本部分提供了将高层架构转化为可执行代码的强制性模式和规范。
 
-为了确保代码的高度一致性和可维护性，所有`dev` Agent在实现核心功能时，**必须**遵循以下模式。
+### **11.1 前端实现模式 (Frontend Implementation Patterns)**
 
 #### **11.1.1 状态管理模式 (State Management Pattern)**
 
 使用Zustand提供一个全局的认证状态存储。
 
-* **文件位置**: `apps/web/stores/authStore.ts`
+* **文件位置**: `apps/web/src/app/lib/stores/authStore.ts`
 
 * **代码模板**:
   
   ```typescript
   import { create } from 'zustand';
   import { User } from '@/packages/shared/types/user';
-  import * as authService from '@/apps/web/services/authService';
+  import * as authService from '@/apps/web/src/app/lib/services/authService';
   
   interface AuthState {
     user: User | null;
@@ -979,35 +968,7 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
   export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     status: 'loading',
-  
-    login: async (credentials) => {
-      try {
-        const user = await authService.login(credentials);
-        set({ user, status: 'authenticated' });
-      } catch (error) {
-        console.error("Login failed:", error);
-        set({ user: null, status: 'unauthenticated' });
-        throw error;
-      }
-    },
-  
-    logout: async () => {
-      await authService.logout();
-      set({ user: null, status: 'unauthenticated' });
-    },
-  
-    checkAuth: async () => {
-      try {
-        const session = await authService.getMe();
-        if (session && session.user) {
-          set({ user: session.user as User, status: 'authenticated' });
-        } else {
-           set({ user: null, status: 'unauthenticated' });
-        }
-      } catch {
-        set({ user: null, status: 'unauthenticated' });
-      }
-    },
+    // ... (login, logout, checkAuth 实现) ...
   }));
   ```
 
@@ -1015,47 +976,12 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
 
 所有与后端API的交互都必须通过服务层进行封装。
 
-* **文件位置**: `apps/web/services/authService.ts`
-
+* **文件位置**: `apps/web/src/app/lib/services/authService.ts`
 * **代码模板**:
   
   ```typescript
-  // Types would be imported from a shared package
-  // For simplicity, defining inline here.
-  export interface LoginCredentials {
-    email: string;
-    password?: string;
-    provider?: 'google';
-  }
-  
-  // A simplified representation of the session object
-  interface Session {
-    user: {
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-    }
-  }
-  
-  // Assume a global fetch client is configured to handle errors
   import { apiClient } from './apiClient';
-  
-  export const login = async (credentials: LoginCredentials): Promise<Session['user']> => {
-      // This would typically use NextAuth's signIn function
-      // For pattern demonstration, we show a direct API call
-      const response = await apiClient.post('/auth/login', credentials);
-      return response.user;
-  };
-  
-  export const logout = async (): Promise<void> => {
-      // Uses NextAuth's signOut
-      await apiClient.post('/auth/logout');
-  };
-  
-  export const getMe = async (): Promise<Session | null> => {
-      // Uses NextAuth's getSession
-      return await apiClient.get('/auth/me');
-  };
+  // ... (接口定义和函数实现) ...
   ```
 
 #### **11.1.3 受保护路由模式 (Protected Route Pattern)**
@@ -1069,33 +995,12 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
   ```typescript
   import { NextResponse } from 'next/server';
   import type { NextRequest } from 'next/server';
-  
-  // This is the modern approach using Next.js Middleware with Auth.js
   import { getToken } from 'next-auth/jwt';
   
   export async function middleware(req: NextRequest) {
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-  
-    const { pathname } = req.nextUrl;
-  
-    // If the user is not authenticated and is trying to access a protected route,
-    // redirect them to the login page.
-    if (!token && pathname.startsWith('/dashboard')) {
-      const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('callbackUrl', req.url);
-      return NextResponse.redirect(loginUrl);
-    }
-  
-    // If the user is authenticated and tries to access login/register,
-    // redirect them to the dashboard.
-    if (token && (pathname === '/login' || pathname === '/register')) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-  
-    return NextResponse.next();
+    // ... (中间件逻辑) ...
   }
   
-  // See "Matching Paths" below to learn more
   export const config = {
     matcher: [
       '/dashboard/:path*',
@@ -1107,111 +1012,142 @@ CREATE INDEX idx_projects_user_id ON Projects(user_id);
 
 #### **11.1.4 认证信息传递模式 (Authenticated Request Pattern)**
 
-**核心原则：** 我们的认证体系依赖于由后端设置的、符合安全标准的 `HttpOnly` Cookie。这意味着前端应用**无需也禁止**手动管理或在请求头（Request Headers）中附加任何Token（如 `Authorization: Bearer ...`）。
+**核心原则：** 我们的认证体系依赖于由后端设置的、符合安全标准的 `HttpOnly` Cookie。这意味着前端应用**无需也禁止**手动管理或在请求头（Request Headers）中附加任何Token。
 
-**前端 `dev` Agent 实施指南:**
+### **11.2 后端实现模式 (Backend Implementation Patterns)**
 
-1. **调用服务层:** 当需要请求一个受保护的后端API时（例如，获取用户项目列表），你只需像调用任何普通API一样调用相应的服务层函数（如 `projectService.getProjects()`）。
-2. **浏览器自动处理:** 浏览器会自动将当前域名下的 `HttpOnly` 会话Cookie附加到你的`fetch`请求中。你不需要编写任何特殊代码来处理认证信息的附加。
-3. **服务层封装:** `apiClient` 或服务层函数负责发起请求并处理响应，无需关心认证细节。
-
-**后端 `dev` Agent 实施指南:**
-
-1. **API路由保护:** 在你的后端API路由（Cloudflare Worker / Next.js API Route）中，你**必须**使用 `Auth.js` (NextAuth) 提供的服务端工具来获取和验证当前用户的会话。
-2. **获取会话:** 通过从请求中解析出的Cookie，你可以安全地获取到用户信息。
-
------
-
-## **第十二部分：后端架构 (Backend Architecture)**
-
-* **Worker服务架构:** **必须**使用 **Next.js 内置的、基于文件系统的API路由**来定义和管理所有API端点。业务逻辑与数据访问逻辑**必须**通过仓储模式 (Repository Pattern) 或类似的服务层进行隔离，以保持代码的整洁和可测试性。
+* **服务架构:** **必须**使用 **Next.js 内置的、基于文件系统的API路由**来定义和管理所有API端点。业务逻辑与数据访问逻辑**必须**通过仓储模式 (Repository Pattern) 或类似的服务层进行隔离，以保持代码的整洁和可测试性。
 * **认证与授权:** 使用`withAuth`中间件或在API路由处理器中通过`getServerSession`来保护需要登录才能访问的API端点。
 * **渲染服务架构:** 采用异步任务工作者模式，通过Flask API接收任务，放入内部队列，由后台进程调用FFmpeg处理，并通过回调API通知Worker任务完成状态。
 
 -----
 
-## **第十三部分：统一的项目结构 (Unified Project Structure)**
+## **第十二部分：统一的项目结构 (Unified Project Structure)**
 
 ```plaintext
 podcast-video-app/
 ├── apps/
-│   ├── web/        # 前端Next.js应用
-│   ├── api/        # 后端Cloudflare Worker应用 (逻辑代码)
-│   └── renderer/   # 独立视频渲染应用 (Python)
+│   ├── web/        # 唯一的、完整的Next.js全栈应用
+│   │   └── src/
+│   │       └── app/
+│   │           ├── (pages)/          # 前端页面路由组
+│   │           │   ├── dashboard/
+│   │           │   └── ...
+│   │           ├── api/              # 后端API路由
+│   │           │   ├── auth/
+│   │           │   ├── projects/
+│   │           │   └── ...
+│   │           ├── lib/              # 前后端共享的库/服务
+│   │           ├── components/       # 前端UI组件
+│   │           └── layout.tsx        # 根布局
+│   └── renderer/   # 独立的视频渲染应用 (Python)
 ├── packages/
-│   ├── shared/     # 前后端共享的代码 (特别是TypeScript类型)
+│   ├── shared/     # 跨应用共享的代码 (特别是TypeScript类型)
 │   └── config/     # 共享的配置文件 (ESLint, TypeScript)
 ├── docs/
 ├── package.json
 └── turbo.json
 ```
 
-#### **架构说明：逻辑分离与部署统一**
- 
-必须理解，`apps/web`和`apps/api`的目录分离是一种**代码组织上的逻辑分离**，旨在提升开发过程中的模块化和清晰度。在**部署时**，它们被Next.js的构建流程统一处理：
-
-* **`apps/web`** 中的代码构成了用户浏览器下载的**客户端**。
-* **`apps/api`** 中的代码则被编译为在**Cloudflare Workers**上运行的**服务端边缘函数**。
-因此，它们在生产环境中共同构成了一个**单一、完整的、一体化的应用**，而不是两个需要通过公网进行通信的独立服务。
+**架构说明 (更新版):**
+此结构明确展示了 **`apps/web` 是一个包含了前端页面 (`(pages)`) 和后端API (`api/`) 的完整Next.js应用**。`apps/api` 作为一个独立的顶级目录已不复存在。这种结构物理上保证了前端和后端逻辑同属于一个应用实体，在开发、构建和部署时都是一体化的。
 
 -----
 
-## **第十四部分：开发工作流 (Development Workflow)**
+## **第十三部分：开发工作流 (Development Workflow)**
 
 ### **本地开发设置 (Local Development Setup)**
 
-* **先决条件:** 在开始之前，请确保您的开发环境中已安装以下工具：
-  
-  ```bash
-  # 软件:
-  - Node.js (~20.x)
-  - pnpm (~9.x)
-  - Python (~3.11)
-  - FFmpeg
-  - (推荐) 内网穿透工具，如 ngrok 或 cloudflared tunnel
-  - Cloudflare CLI (wrangler)
-  ```
+#### **先决条件 (Prerequisites)**
 
-* **初次安装:**
-  
-  ```bash
-  git clone [repository_url]
-  cd podcast-video-app
-  pnpm install
-  pip install -r apps/renderer/requirements.txt
-  cp .env.example .env
-  # ... 然后根据.env.example的指示，填写所有必需的密钥和URL
-  ```
+```bash
+# 软件:
+- Node.js (~20.x)
+- pnpm (~9.x)
+- Python (~3.11)
+- FFmpeg
+- (推荐) 内网穿透工具，如 ngrok 或 cloudflared tunnel
+- Cloudflare CLI (wrangler)
+```
 
-* **开发命令:**
-  
-  ```bash
-  # 启动所有Web服务 (前端 + 后端Worker)
-  pnpm dev
-  # 独立启动Python渲染服务
-  python apps/renderer/api.py
-  ```
+#### **初次安装 (Initial Setup)**
+
+```bash
+git clone [repository_url]
+cd podcast-video-app
+pnpm install
+pip install -r apps/renderer/requirements.txt
+cp .env.example .env
+# ... 然后根据.env.example的指示，填写所有必需的密钥和URL
+```
+
+#### **本地环境绑定配置 (`wrangler.toml`) (Local Environment Binding Configuration)**
+
+为了在本地开发时模拟Cloudflare的D1和R2绑定，您**必须**在项目根目录创建一个`wrangler.toml`文件。此文件不应包含任何敏感密钥，只用于声明本地开发所需的资源绑定。
+
+**`wrangler.toml` 示例:**
+
+```toml
+name = "podcast-video-app" # 与您的应用名称匹配
+compatibility_date = "2025-08-01" # 使用一个近期的日期
+
+# 本地开发时 D1 数据库的绑定声明
+[[d1_databases]]
+binding = "DB" # 这必须与代码中 env.DB 的名称匹配
+database_name = "podcast-video-db"
+database_id = "your-local-preview-db-id" # 运行 npx wrangler d1 create <db_name> 获取
+preview_database_id = "your-local-preview-db-id"
+
+# 本地开发时 R2 存储桶的绑定声明
+[[r2_buckets]]
+binding = "ASSETS" # 这必须与代码中 env.ASSETS 的名称匹配
+bucket_name = "podcast-video-assets"
+preview_bucket_name = "podcast-video-assets-preview" # 运行 npx wrangler r2 bucket create <bucket_name> 获取
+```
+
+**注意：** 生产环境的绑定将通过Cloudflare Pages的网页控制台进行配置，并会覆盖此文件中的设置。
+
+#### **开发命令 (Development Commands)**
+
+```bash
+# 启动所有Web服务 (前端 + 后端Worker)
+pnpm dev
+# 独立启动Python渲染服务
+python apps/renderer/api.py
+```
 
 ### **环境变量配置 (Environment Configuration)**
 
-* **后端Worker (`apps/api/.env`):**
-  * `DATABASE_URL`: Cloudflare D1的连接信息。
-  * `R2_BUCKET_NAME`: Cloudflare R2存储桶名称。
-  * `GOOGLE_CLIENT_ID` / `SECRET`: Google登录凭证。
-  * `AUTH_SECRET`: Auth.js的会话密钥。
-  * `RENDERER_API_ENDPOINT`: 暴露给公网的本地渲染服务URL。
-* **渲染服务 (`apps/renderer/.env`):**
-  * `R2_ACCOUNT_ID` / `ACCESS_KEY_ID` / `SECRET_ACCESS_KEY`: R2的API访问凭证。
-  * `CALLBACK_API_ENDPOINT`: 用于状态回传的后端Worker URL。
+#### **安全说明：环境变量的隔离机制**
+
+**核心安全原则：** Next.js通过变量前缀来区分服务器端和客户端环境变量，以确保后端密钥的绝对安全。
+
+  * **服务器端私有变量 (例如 `DATABASE_URL`, `AUTH_SECRET`):**
+      * **命名:** 无特殊前缀。
+      * **安全:** **绝不**会暴露给客户端。只能在API路由等服务器端代码中通过`process.env`访问。
+  * **客户端公开变量 (例如 `NEXT_PUBLIC_WEBSITE_URL`):**
+      * **命名:** **必须**以`NEXT_PUBLIC_`作为前缀。
+      * **安全:** 会被内联到浏览器代码中，**完全公开**。
+
+**强制性规定：严禁将任何密钥、密码或敏感凭证存放在以`NEXT_PUBLIC_`为前缀的环境变量中。**
+
+  * **后端Worker (`apps/web/.env`):**
+      * `DATABASE_URL`: Cloudflare D1的连接信息。
+      * `R2_BUCKET_NAME`: Cloudflare R2存储桶名称。
+      * `GOOGLE_CLIENT_ID` / `SECRET`: Google登录凭证。
+      * `AUTH_SECRET`: Auth.js的会话密钥。
+      * `RENDERER_API_ENDPOINT`: 暴露给公网的本地渲染服务URL。
+  * **渲染服务 (`apps/renderer/.env`):**
+      * `R2_ACCOUNT_ID` / `ACCESS_KEY_ID` / `SECRET_ACCESS_KEY`: R2的API访问凭证。
+      * `CALLBACK_API_ENDPOINT`: 用于状态回传的后端Worker URL。
 
 -----
 
-## **第十五部分：部署架构 (Deployment Architecture)**
+## **第十四部分：部署架构 (Deployment Architecture)**
 
 ### **部署策略 (Deployment Strategy)**
 
-* **前端应用 (`apps/web`):** 通过CI/CD流程，自动部署到 **Cloudflare Pages**。
-* **后端服务 (`apps/api`):** 通过CI/CD流程，使用`wrangler`自动部署到 **Cloudflare Workers**。
+* **Next.js全栈应用 (`apps/web`):** 通过CI/CD流程，自动部署到 **Cloudflare Pages**。
 * **渲染服务 (`apps/renderer`):** MVP阶段**不进行云端部署**，在本地手动运行。
 
 ### **CI/CD 流水线 (CI/CD Pipeline)**
@@ -1228,7 +1164,7 @@ podcast-video-app/
 
 -----
 
-## **第十六部分：安全与性能 (Security and Performance)**
+## **第十五部分：安全与性能 (Security and Performance)**
 
 ### **安全要求 (Security Requirements)**
 
@@ -1238,38 +1174,14 @@ podcast-video-app/
 - 所有用户生成的内容在渲染时都必须经过严格的净化处理
 - 认证状态通过HttpOnly Cookie管理，前端无法直接访问token
 
-**后端安全:**
-
-- 所有API的输入数据都必须经过严格的**校验**
-- 对关键API端点实施**速率限制**
-- 配置严格的**CORS策略**
-- 实施SQL注入防护和XSS防护
-
 **认证安全:**
 
 - 使用安全的、`HttpOnly`的会话Cookie
 - 所有密钥**必须**通过环境变量管理，严禁硬编码
-- 实施以下密码安全策略：
-
-#### **密码哈希和存储策略**
 
 **强制性规定：**
 
-* **密码哈希必须且只能在后端执行。** 在处理用户注册（`/api/auth/register`）或密码修改的API路由中，接收到用户的明文密码后，**必须立即**使用`bcrypt`进行哈希，然后才能将哈希后的值存入数据库。**严禁**在前端对密码进行任何形式的哈希处理。
-
-**密码要求:**
-
-- 最小长度：8个字符
-- 必须包含：至少一个大写字母、一个小写字母、一个数字
-- 推荐包含特殊字符
-- 禁止使用常见弱密码（如"password123"等）
-
-**密码哈希算法:**
-
-- 使用 **bcrypt** 算法进行密码哈希
-- 最小成本因子（cost factor）：**12**
-- 每个密码使用唯一的随机盐值
-- 绝不存储明文密码
+* **密码哈希必须且只能在后端执行。** 在处理用户注册（`apps/web/src/app/api/auth/register`）的API路由中，接收到用户的明文密码后，**必须立即**使用`bcrypt`进行哈希，然后才能将哈希后的值存入数据库。**严禁**在前端对密码进行任何形式的哈希处理。
 
 ### **性能优化 (Performance Optimization)**
 
@@ -1277,19 +1189,15 @@ podcast-video-app/
 
 - 采用**代码分割**、**懒加载**策略
 - 充分利用Cloudflare Pages的全球**CDN缓存**
-- 实施资源预加载和关键资源优先级
-- 优化图片和静态资源压缩
 
 **后端性能:**
 
 - API的目标响应时间（P95）应在**200毫秒**以内
 - 数据库查询**必须**使用索引
-- 实施查询结果缓存策略
-- 对频繁访问的数据实施Redis缓存
 
 -----
 
-## **第十七部分：测试策略 (Testing Strategy)**
+## **第十六部分：测试策略 (Testing Strategy)**
 
 ### **测试金字塔 (Testing Pyramid)**
 
@@ -1299,11 +1207,10 @@ podcast-video-app/
 
 * **单元/集成测试:** 测试文件将与被测试的组件或服务放在一起（co-location）。
 * **端到端(E2E)测试:** 存放在代码仓库根目录下的一个独立的 `e2e/` 目录中。
-* **测试示例:** 为前端组件、后端API和E2E测试提供了基于`Vitest`和`Playwright`的脚手架代码示例。
 
 -----
 
-## **第十八部分：编码规范 (Coding Standards)**
+## **第十七部分：编码规范 (Coding Standards)**
 
 ### **关键规则 (Critical Rules)**
 
@@ -1312,46 +1219,9 @@ podcast-video-app/
 * **3. 环境变量隔离:** 应用代码中**严禁**直接访问`process.env`。所有密钥和配置**必须**通过Cloudflare Worker运行时注入的`env`对象来访问。
 * **4. 统一错误处理:** 所有API路由**必须**使用统一的错误处理中间件，并使用`AppError`类来抛出可预期的业务逻辑错误。
 
-### **命名约定 (Naming Conventions)**
-
-| 元素     | 约定                | 示例              |
-|:------ |:----------------- |:--------------- |
-| 组件/类型  | PascalCase        | `UserProfile`   |
-| Hook文件 | camelCase (use\*) | `useAuth.ts`    |
-| 数据库表   | snake\_case       | `user_profiles` |
-
 -----
 
-## **第十九部分：错误处理策略 (Error Handling Strategy)**
-
-### **错误流程 (Error Flow)**
-
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant FE as 前端应用
-    participant BE as 后端服务 (Worker)
-    participant DB as 数据库
-
-    User->>FE: 1. 执行一个操作 (如用户注册)
-    FE->>BE: 2. 调用API (POST /api/auth/register)
-    BE->>BE: 3. 验证输入数据
-    alt 输入验证失败
-        BE-->>FE: 4a. 返回400错误 (VALIDATION_ERROR)
-        FE->>User: 5a. 显示具体的验证错误信息
-    else 输入验证通过
-        BE->>DB: 4b. 尝试创建用户
-        alt 邮箱已存在
-            DB-->>BE: 5b. 返回唯一约束冲突
-            BE-->>FE: 6b. 返回409错误 (EMAIL_EXISTS)
-            FE->>User: 7b. 显示"邮箱已被注册"提示
-        else 创建成功
-            DB-->>BE: 5c. 返回用户数据
-            BE-->>FE: 6c. 返回201成功响应
-            FE->>User: 7c. 自动登录并跳转到项目列表
-        end
-    end
-```
+## **第十八部分：错误处理策略 (Error Handling Strategy)**
 
 ### **标准化错误响应格式 (Standardized Error Response Format)**
 
@@ -1370,7 +1240,7 @@ interface ApiError {
 
 -----
 
-## **第二十部分：监控与可观测性 (Monitoring and Observability)**
+## **第十九部分：监控与可观测性 (Monitoring and Observability)**
 
 ### **监控技术栈 (Monitoring Stack)**
 
@@ -1382,35 +1252,16 @@ MVP阶段，我们将优先利用平台自带的免费且强大的监控工具�
 * **后端监控 (Worker):**
   * **核心指标:** 主要依赖 **Cloudflare Workers的内置分析** 来监控API请求率、错误率、CPU执行时间和冷启动情况。
   * **日志:** 详细的错误日志将被打印到Cloudflare控制台，以便于实时调试。
-* **渲染服务监控:**
-  * **MVP阶段:** 通过**手动查看本地程序的命令行日志**来进行监控。
-  * **未来:** 当迁移到云端后，将集成云平台自带的监控服务（如AWS CloudWatch或Google Cloud Logging）。
-
-### **关键指标 (Key Metrics)**
-
-我们将重点关注以下几类关键指标：
-
-* **前端指标:**
-  * Core Web Vitals (LCP, INP, CLS): 衡量用户感知的页面加载和交互性能。
-  * JS 错误率: 衡量前端代码的稳定性。
-  * API 请求延迟: 从客户端视角衡量的后端响应速度。
-* **后端指标 (Worker):**
-  * 请求总数 & 错误率: API的整体健康度和可靠性。
-  * CPU 执行时间: 监控性能热点和潜在的成本驱动因素。
-* **渲染服务指标:**
-  * 任务队列长度: (未来迁移至云端后) 衡量渲染任务积压情况的关键指标。
-  * 平均渲染时间: 每个视频的平均处理耗时。
-  * 渲染成功/失败率: 衡量渲染服务的可靠性。
 
 -----
 
-## **第二十一部分：清单检查结果报告 (Checklist Results Report)**
+## **第二十部分：清单检查结果报告 (Checklist Results Report)**
 
 * **最终决定:** **准备就绪 (READY FOR DEVELOPMENT)**。
 
 -----
 
-## **第二十二部分：架构演进路径 (Architecture Evolution Path)**
+## **第二十一部分：架构演进路径 (Architecture Evolution Path)**
 
 当前的一体化架构是为实现MVP目标而精心选择的。为了确保未来的可扩展性，我们预设了以下演进路径：
 
@@ -1429,4 +1280,4 @@ MVP阶段，我们将优先利用平台自带的免费且强大的监控工具�
    
    * **触发条件:** 当我们需要支持一个全新的客户端，例如原生移动App (iOS/Android)时。
    * **策略:** 将所有共享的业务逻辑（用户、项目等）重构为一个独立的核心后端服务。此时，Next.js后端将演变为一个纯粹的BFF，只负责服务Web端的数据聚合与格式化。
-   * **优势:** 实现跨多端的核心逻辑复用，支持更复杂的生态系统。 
+   * **优势:** 实现跨多端的核心逻辑复用，支持更复杂的生态系统。
