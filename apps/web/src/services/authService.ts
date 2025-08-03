@@ -10,8 +10,7 @@ export async function register(credentials: RegisterCredentials): Promise<User> 
   if (response.status !== 201) {
     throw new Error(response.data.error || 'Registration failed');
   }
-  // After successful registration, automatically sign in the user
-  await login({ email: credentials.email, password: credentials.password });
+  // 注册成功后返回用户数据，不自动登录
   return response.data.user;
 }
 

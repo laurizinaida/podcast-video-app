@@ -5,11 +5,13 @@ import type { NextAuthConfig } from "next-auth"
 import bcrypt from 'bcryptjs';
 import { User } from '@podcast-video-app/shared/types/user';
 import { D1Database } from '@cloudflare/workers-types';
+import { D1Adapter } from "@auth/d1-adapter";
 
-export const getConfig = (env?: any): NextAuthConfig => {
-  const db = env?.DB as D1Database;
-
+// 导出一个可复用的配置生成函数
+export const getConfig = (db: D1Database): NextAuthConfig => {
   return {
+    // @ts-ignore // D1Adapter is compatible
+    adapter: D1Adapter(db),
     providers: [
       Google({
         clientId: process.env.GOOGLE_CLIENT_ID,
@@ -27,9 +29,8 @@ export const getConfig = (env?: any): NextAuthConfig => {
           }
 
           if (!db) {
-            console.error("Database binding not available in authorize function.");
-            // Returning null or throwing an error is appropriate here.
-            return null;
+            console.error("Database binding is not available in authorize function.");
+            throw new Error("Database not available.");
           }
 
           try {
@@ -38,22 +39,26 @@ export const getConfig = (env?: any): NextAuthConfig => {
               .first<User & { password_hash: string }>();
 
             if (!userFromDb || !userFromDb.password_hash) {
-              return null;
+              return null; // 用户不存在或没有设置密码
             }
 
-            const isValidPassword = await bcrypt.compare(credentials.password as string, userFromDb.password_hash);
+            const isValidPassword = await bcrypt.compare(
+              credentials.password as string, 
+              userFromDb.password_hash
+            );
 
             if (!isValidPassword) {
-              return null;
+              return null; // 密码错误
             }
 
+            // 返回的用户对象将用于创建会话
             return {
               id: userFromDb.id,
               name: userFromDb.name,
               email: userFromDb.email,
             };
           } catch (error) {
-            console.error('Auth error:', error);
+            console.error('Authorize error:', error);
             return null;
           }
         }
@@ -65,15 +70,15 @@ export const getConfig = (env?: any): NextAuthConfig => {
     callbacks: {
       async jwt({ token, user }) {
         if (user) {
-          token.id = user.id
+          token.id = user.id;
         }
-        return token
+        return token;
       },
       async session({ session, token }) {
-        if (token) {
-          session.user.id = token.id as string
+        if (token && session.user) {
+          session.user.id = token.id as string;
         }
-        return session
+        return session;
       },
     },
     session: {
@@ -83,7 +88,3 @@ export const getConfig = (env?: any): NextAuthConfig => {
     secret: process.env.AUTH_SECRET,
   }
 }
-
-// We get the handlers dynamically in the route now.
-// So we export the main NextAuth object configured with our function.
-export const { handlers, auth, signIn, signOut } = NextAuth(getConfig((globalThis as any).auth?.env))

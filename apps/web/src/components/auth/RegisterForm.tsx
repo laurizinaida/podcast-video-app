@@ -34,7 +34,8 @@ export function RegisterForm() {
     setError(null);
     try {
       await register(data);
-      router.push('/dashboard');
+      // 注册成功后重定向到登录页面
+      router.push('/auth/login');
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
     }

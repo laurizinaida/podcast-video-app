@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
+    "@auth/d1-adapter": "^1.4.2",
     "@hookform/resolvers": "^5.2.1",
     "@podcast-video-app/shared": "workspace:*",
     "@radix-ui/react-label": "^2.1.0",

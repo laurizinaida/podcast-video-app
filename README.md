@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-这是一个基于 Next.js 和 Hono 的全栈应用，使用 Monorepo 架构，旨在为用户提供智能的音频到视频转换服务。
+这是一个基于 Next.js 的全栈应用，使用 Monorepo 架构，部署在 Cloudflare Pages 上，旨在为用户提供智能的音频到视频转换服务。
 
 ## 技术栈
 
@@ -13,13 +13,18 @@
 - **TypeScript** - 类型安全
 - **Tailwind CSS** - 样式框架
 - **Radix UI** - 组件库
-- **Auth.js** - 身份认证
+- **NextAuth.js** - 身份认证
 
 ### 后端
-- **Hono** - 轻量级 Web 框架
-- **Better SQLite3** - 数据库
+- **Next.js API Routes** - 服务端 API
+- **Cloudflare D1** - 数据库
 - **bcrypt** - 密码加密
 - **Zod** - 数据验证
+
+### 部署平台
+- **Cloudflare Pages** - 前端部署
+- **Cloudflare Workers** - 服务端运行时
+- **Cloudflare D1** - 数据库服务
 
 ### 开发工具
 - **TurboRepo** - Monorepo 管理
@@ -32,8 +37,7 @@
 ```
 podcast-video-app/
 ├── apps/
-│   ├── web/          # Next.js 前端应用
-│   └── api/          # Hono 后端 API
+│   └── web/          # Next.js 全栈应用
 ├── packages/
 │   ├── shared/       # 共享类型和工具
 │   └── config/       # 共享配置
@@ -64,12 +68,11 @@ cp apps/api/.env.example apps/api/.env
 
 ### 开发模式
 ```bash
-# 启动所有服务
-pnpm dev
+# 使用 Cloudflare Wrangler 启动开发服务器
+pnpm dev:wrangler    # 全栈应用 (http://localhost:3000)
 
-# 或分别启动
-pnpm dev:web    # 前端 (http://localhost:3000)
-pnpm dev:api    # 后端 (http://localhost:3001)
+# 或使用标准 Next.js 开发模式（不包含 Cloudflare 功能）
+pnpm dev:web         # 仅前端开发 (http://localhost:3000)
 ```
 
 ### 构建
